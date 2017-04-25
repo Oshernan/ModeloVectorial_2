@@ -2,12 +2,14 @@
 import java.awt.Desktop;
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Scanner;
+import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -135,6 +137,7 @@ public class Modelos {
 			acumuladorIDF[i] = (double) 0;
 			
 		}
+		Map<String,Double> cosenoTFIDF = new HashMap<String, Double>();
 		String query;
 		/*if (query1==""){
 			System.out.println("Introduzca la consulta que desea realizar: ");
@@ -187,6 +190,7 @@ public class Modelos {
         	
         }
 		int i=0;
+		String docName=null;
     	for(Document diccionario : coleccion){
     		Iterator it = diccionario.entrySet().iterator();
     		
@@ -194,15 +198,26 @@ public class Modelos {
     		{
     			
     			 Document.Entry e = (Document.Entry)it.next();
-    			 if(!e.getKey().equals("_id")&&i<=1966){
+    			 if(!e.getKey().equals("_id")){
     			 //System.out.println(e.getKey()+"-"+e.getValue());
     			acumuladorD[i]+=Math.pow((double)(int)e.getValue(), 2);
 				acumuladorIDF[i]+=(Math.pow((double)(int) e.getValue()*Funcionalidades.idfword(num,(double)idf.getInteger(e.getKey())), 2));
 
     			 }
+    			 else{
+    				 docName = (String) e.getValue();
+    			 }
     		}
     		cosenoTF[i]=Funcionalidades.cosenoTF(escalarTF[i], acumuladorD[i], acumuladorQ);
-			cosenoIDF[i]=Funcionalidades.cosenoTFIDF(escalarIDF[i], acumuladorIDF[i], acumuladorQidf);
+			if(Math.sqrt(acumuladorIDF[i]*acumuladorQidf)==0){
+				/*System.out.println(acumuladorIDF[i]);
+				System.out.println(acumuladorQidf);*/
+				cosenoIDF[i]=(double) -1;
+			}
+			else{
+				cosenoIDF[i]=Funcionalidades.cosenoTFIDF(escalarIDF[i], acumuladorIDF[i], acumuladorQidf);	
+			}
+			cosenoTFIDF.put(docName, cosenoIDF[i]);
 			i++;
     	}
 
@@ -220,9 +235,16 @@ public class Modelos {
 		pesos.add(escalarIDF);
 		pesos.add(cosenoTF);
 		pesos.add(cosenoIDF);
-		for(int a=0;a<cosenoIDF.length; a++){
+		Arrays.sort(cosenoIDF);	
+		
+		MapComparator bvc= new MapComparator(cosenoTFIDF);
+		TreeMap<String, Double> smap = new TreeMap<String, Double>(bvc);
+		smap.putAll(cosenoTFIDF);
+		System.out.println("Resultados"+ smap);
+		//System.out.println(cosenoIDF.toString());
+		/*for(int a=0;a<cosenoIDF.length; a++){
 			System.out.println(cosenoIDF[a]);
-		}
+		}*/
 		return pesos;
 	}
 	//Carga el nombre de los documuntos html
