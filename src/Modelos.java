@@ -127,6 +127,9 @@ public class Modelos {
 		Double[]  acumuladorIDF= new Double[(int) num];
 		double acumuladorQidf= 0;
 		double acumuladorQ = 0;
+		String idC;
+		String contC;
+		FindIterable<Document> coleccion = mongo.getCollectionPalabras().find();
 		ArrayList<Double[]> pesos = new ArrayList<Double[]>();
 
 		for (int i=0; i<num;i++){
@@ -139,112 +142,113 @@ public class Modelos {
 		}
 		Map<String,Double> cosenoTFIDF = new HashMap<String, Double>();
 		String query;
-		/*if (query1==""){
-			System.out.println("Introduzca la consulta que desea realizar: ");
-			Scanner entradaEscaner = new Scanner (System.in); //Creaci�n de un objeto Scanner, para leer la consulta
-	        query = entradaEscaner.nextLine();
-		}
-		else{
-			//String query = "What video game won Spike best driving game award in 2006";
+		
+		Document queries =  (Document) mongo.getCollectionDocumentos().find().first();
+		Iterator itQ = queries.entrySet().iterator();
+
+		/*while(itQ.hasNext()){
+			Document.Entry a = (Document.Entry)itQ.next();
+			 if(!a.getKey().equals("_id")){
+			idC= (String) a.getKey();
+			contC = (String) a.getValue();
 			
-			query = query1;
-		}*/
-		query= "What processor obtained the best score in 2009 for the Photoshop benchmark?";
-		//Separamos la query y sus palabras
-        String[] palabra = query.split("[^a-zA-Z0-9]");
-        Map<String, Integer> map = new HashMap<String, Integer>();
-        //Creo mapa de la query
-		for (int i=0; i<palabra.length; i++){
-			String value = palabra[i].toLowerCase();
-			if (!palabra[i].equals("") && palabra[i].length()>1){
-				if (map.containsKey(value)){
-					map.put(value, (int)map.get(value)+1);
+			
+			query= contC;*/
+			query = "What processor obtained the best score in 2009 for the Photoshop benchmark?";
+			//Separamos la query y sus palabras
+	        String[] palabra = query.split("[^a-zA-Z0-9]");
+	        Map<String, Integer> map = new HashMap<String, Integer>();
+	        //Creo mapa de la query
+			for (int i=0; i<palabra.length; i++){
+				String value = palabra[i].toLowerCase();
+				if (!palabra[i].equals("") && palabra[i].length()>1){
+					if (map.containsKey(value)){
+						map.put(value, (int)map.get(value)+1);
+					}
+					else{
+						map.put(value, 1);
+					}
+				}
+			}
+
+			//Busco la palabra en mis docus
+			for (Entry<String, Integer> entry : map.entrySet()) {
+				String word = entry.getKey();
+				int i=0;
+	        	for(Document diccionario : coleccion){
+	        		if(diccionario.containsKey(word)){
+	        			//Acumulo valores para cada html en mi indice
+	        			escalarTF[i]+=Funcionalidades.escalarTF(diccionario.getInteger(word),entry.getValue());
+	        			escalarIDF[i]+=Funcionalidades.escalarIDF(diccionario.getInteger(word), entry.getValue(),num,(double)idf.getInteger(word));
+	        		}
+	        		i++;
+	        	}
+	        	acumuladorQ+=Math.pow(entry.getValue(), 2);
+	        	double idf1 = 0.0;
+	        	if(idf.containsKey(word)){
+	        		idf1 = Funcionalidades.idfword(num,(double)idf.getInteger(word));
+	        	}
+	        	acumuladorQidf+=(Math.pow(entry.getValue()*idf1, 2));
+	        	
+	        }
+			int i=0;
+			String docName=null;
+	    	for(Document diccionario : coleccion){
+	    		Iterator it = diccionario.entrySet().iterator();
+	    		
+	    		while (it.hasNext()) 
+	    		{
+	    			
+	    			 Document.Entry e = (Document.Entry)it.next();
+	    			 if(!e.getKey().equals("_id")){
+	    			 //System.out.println(e.getKey()+"-"+e.getValue());
+	    			acumuladorD[i]+=Math.pow((double)(int)e.getValue(), 2);
+					acumuladorIDF[i]+=(Math.pow((double)(int) e.getValue()*Funcionalidades.idfword(num,(double)idf.getInteger(e.getKey())), 2));
+
+	    			 }
+	    			 else{
+	    				 docName = (String) e.getValue();
+	    			 }
+	    		}
+	    		cosenoTF[i]=Funcionalidades.cosenoTF(escalarTF[i], acumuladorD[i], acumuladorQ);
+				if(Math.sqrt(acumuladorIDF[i]*acumuladorQidf)==0){
+					/*System.out.println(acumuladorIDF[i]);
+					System.out.println(acumuladorQidf);*/
+					cosenoIDF[i]=(double) -1;
 				}
 				else{
-					map.put(value, 1);
+					cosenoIDF[i]=Funcionalidades.cosenoTFIDF(escalarIDF[i], acumuladorIDF[i], acumuladorQidf);	
+				}
+				cosenoTFIDF.put(docName, cosenoIDF[i]);
+				i++;
+	    	}
+
+			pesos.add(escalarTF);
+			pesos.add(escalarIDF);
+			pesos.add(cosenoTF);
+			pesos.add(cosenoIDF);
+			
+			MapComparator bvc= new MapComparator(cosenoTFIDF);
+			TreeMap<String, Double> smap = new TreeMap<String, Double>(bvc);
+			smap.putAll(cosenoTFIDF);
+			
+			int numero=0;
+			Map<String,Double> top = new HashMap<String,Double>();
+			for (Entry<String, Double> entry : smap.entrySet()) {
+				if (numero<100){
+				top.put(entry.getKey(), entry.getValue());
+				numero++;
 				}
 			}
-		}
-		FindIterable<Document> coleccion = mongo.getCollectionPalabras().find();
-		for (Document diccionario : coleccion){
-	
-		}
-		//Busco la palabra en mis docus
-		for (Entry<String, Integer> entry : map.entrySet()) {
-			String word = entry.getKey();
-			int i=0;
-        	for(Document diccionario : coleccion){
-        		if(diccionario.containsKey(word)){
-        			//Acumulo valores para cada html en mi indice
-        			escalarTF[i]+=Funcionalidades.escalarTF(diccionario.getInteger(word),entry.getValue());
-        			escalarIDF[i]+=Funcionalidades.escalarIDF(diccionario.getInteger(word), entry.getValue(),num,(double)idf.getInteger(word));
-        		}
-        		i++;
-        	}
-        	acumuladorQ+=Math.pow(entry.getValue(), 2);
-        	double idf1 = 0.0;
-        	if(idf.containsKey(word)){
-        		idf1 = Funcionalidades.idfword(num,(double)idf.getInteger(word));
-        	}
-        	acumuladorQidf+=(Math.pow(entry.getValue()*idf1, 2));
-        	
-        }
-		int i=0;
-		String docName=null;
-    	for(Document diccionario : coleccion){
-    		Iterator it = diccionario.entrySet().iterator();
-    		
-    		while (it.hasNext()) 
-    		{
-    			
-    			 Document.Entry e = (Document.Entry)it.next();
-    			 if(!e.getKey().equals("_id")){
-    			 //System.out.println(e.getKey()+"-"+e.getValue());
-    			acumuladorD[i]+=Math.pow((double)(int)e.getValue(), 2);
-				acumuladorIDF[i]+=(Math.pow((double)(int) e.getValue()*Funcionalidades.idfword(num,(double)idf.getInteger(e.getKey())), 2));
-
-    			 }
-    			 else{
-    				 docName = (String) e.getValue();
-    			 }
-    		}
-    		cosenoTF[i]=Funcionalidades.cosenoTF(escalarTF[i], acumuladorD[i], acumuladorQ);
-			if(Math.sqrt(acumuladorIDF[i]*acumuladorQidf)==0){
-				/*System.out.println(acumuladorIDF[i]);
-				System.out.println(acumuladorQidf);*/
-				cosenoIDF[i]=(double) -1;
-			}
-			else{
-				cosenoIDF[i]=Funcionalidades.cosenoTFIDF(escalarIDF[i], acumuladorIDF[i], acumuladorQidf);	
-			}
-			cosenoTFIDF.put(docName, cosenoIDF[i]);
-			i++;
-    	}
-
-		/*
-		for (int i =0; i<num; i ++){
-			for (Entry<String, Integer> entry : indice.get(i).entrySet()) {
-				acumuladorD[i]+=Math.pow(entry.getValue(), 2);
-				acumuladorIDF[i]+=(Math.pow(entry.getValue()*Funcionalidades.idfword((double)indice.size(),(double)idf.get(entry.getKey()).intValue()), 2));
-			}
-			cosenoTF[i]=Funcionalidades.cosenoTF(escalarTF[i], acumuladorD[i], acumuladorQ);
-			cosenoIDF[i]=Funcionalidades.cosenoTFIDF(escalarIDF[i], acumuladorIDF[i], acumuladorQidf);
-		}	
-		*/
-		pesos.add(escalarTF);
-		pesos.add(escalarIDF);
-		pesos.add(cosenoTF);
-		pesos.add(cosenoIDF);
-		Arrays.sort(cosenoIDF);	
+			System.out.println(smap);
+			System.out.println(top);
+			Precision5(smap, mongo, query);
+			
+			 
+		//}
 		
-		MapComparator bvc= new MapComparator(cosenoTFIDF);
-		TreeMap<String, Double> smap = new TreeMap<String, Double>(bvc);
-		smap.putAll(cosenoTFIDF);
-		System.out.println("Resultados"+ smap);
-		//System.out.println(cosenoIDF.toString());
-		/*for(int a=0;a<cosenoIDF.length; a++){
-			System.out.println(cosenoIDF[a]);
-		}*/
+		
+
 		return pesos;
 	}
 	//Carga el nombre de los documuntos html
@@ -263,6 +267,28 @@ public class Modelos {
 	    }
 	    return names;
 	}
+	
+    public static void Precision5 (TreeMap<String, Double> smap, Conector mongo, String queryId){
+        //Double precision = null;
+        Document relevancias = (Document) mongo.getCollectionRelevancia().find().first();
+        
+        int i =1;
+        
+            for(Entry<String, Double> entry : smap.entrySet()){
+                if(i>10) break;
+                System.out.println(entry.getKey()+" "+ entry.getValue());
+                Iterator it = relevancias.entrySet().iterator();
+                while (it.hasNext()) {
+                    Document.Entry e = (Document.Entry)it.next();
+                    if(!e.getKey().equals("_id")&&(((String) e.getKey()).contains(queryId+"|"+entry.getKey()))&& (Integer.parseInt(e.getValue().toString())>=1)){
+                        System.out.println(e.getKey()+ " "+e.getValue() + "----------");
+                        //Contamos
+                    }
+                }
+            i++;
+            }
+        //return precision;
+    }
 	
 	/*Muestra la tabla de resultados de la consulta 
 	public static Object[][] view(ArrayList<Double[]> datos, ArrayList<Map<String,Integer>> indice, List<String> fileNames ){
@@ -341,4 +367,5 @@ public class Modelos {
 		System.out.println(" Consulta guardada en la carpeta outputs, nombre : "+ output);
 	}
 */
+	
 }

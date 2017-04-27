@@ -57,7 +57,7 @@ public class Diccionarios {
 			out = out.replace(">", "> ");
 			org.jsoup.nodes.Document doc = Jsoup.parse(out);
 			org.bson.Document doc1 = new Document();
-			doc1.append("_id", url);
+			doc1.append("_id", url.substring(10,21));
 			//----
 			
 			String regex = "([^a-zA-Z0-9])"; //"([^a-zA-Z0-9\\.])|(\\.+\\s)"

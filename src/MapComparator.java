@@ -11,9 +11,9 @@ public class MapComparator implements Comparator<String> {
 
 	public int compare(String o1, String o2) {
 		if (mapa.get(o1)>= mapa.get(o2)){
-			return 1;
-		}else{
 			return -1;
+		}else{
+			return 1;
 		}
 		
 	}
