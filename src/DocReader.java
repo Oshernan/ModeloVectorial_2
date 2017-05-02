@@ -12,7 +12,7 @@ import org.bson.Document;
 
 public class DocReader {
 
-	public static  Document leerUnion(){
+	public  Document leerUnion(){
         File dir = new File("./docs/2010.union.trel");
         FileReader fr = null;
         BufferedReader br = null;
@@ -30,7 +30,7 @@ public class DocReader {
         }
         return doc;
     }
-    public static Document leerTopics(){
+    public Document leerTopics(){
         File fXmlFile = new File("./docs/2010-topics.xml");
         DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
         Document r = new Document("_id","topic");

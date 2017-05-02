@@ -41,18 +41,18 @@ public class Modelos {
 	    for (File text: files){
 	    	text.delete();
 	    }
-		int consulta=1;
+		
 		while (exit ==0){
 			
 			System.out.println("Porfavor indique la operaci�n que desea realizar\n"
 					+ " Para crear los diccionarios pulse:  1\n"
-					+ " Para recuperar las consultas:  2\n"
-					+ " Para realizar una consulta pulse:  3\n"
-					+ " Para ver consultas de ejemplo pulse: 4\n"
+					+ " Para leer las relevancias asignadas a consultas:  2\n"
+					+ " Para evaluar el Motor a partir de las consultas fijadas:  3\n"
+					+ " Para evaluar el Motor de forma expandida a partir de las consultas fijadas: 4\n"
 					+ " Para salir pulse:  5\n");
 			Scanner sc = new Scanner(System.in);
 		    int input = sc.nextInt();
-		    if (input < 1 || input >4) System.out.println("Opci�n incorrecta\n");
+		    if (input < 1 || input >5) System.out.println("Opci�n incorrecta\n");
 		    else{
 		    	switch(input){
 		    	
@@ -75,11 +75,7 @@ public class Modelos {
 		    		System.out.println("Se ha leido el fichero de las relevancias");
 					break;
 		    	case(3):
-		    		/*if (indice.isEmpty()){
-		    			System.out.println("Antes de realizar una consulta debe crear los diccionarios\n");
-		    			break;
-		    		}*/
-		    		//Realizar consulta*********************
+		    		
 		    		Document doc =  (Document) mongo.getCollectionIdf().find().first();
 					datos = consulta(mongo, (Document) doc, "");
 					
@@ -88,38 +84,51 @@ public class Modelos {
 					Scanner sc1 = new Scanner(System.in);
 					System.out.println("Pulse ENTER para continuar\n\n");
 					//export(table1, "consulta"+consulta+".txt");
-					consulta ++;
+					
 					if(sc1.hasNextLine())break;
 				
 		    	case(4):
+		    		
+		    		
+		    		/*--------------
 		    		if (indice.isEmpty()){
 		    			System.out.println("Antes de realizar una consulta debe crear los diccionarios\n");
 		    			break;
 		    		}
-		    		/* Realizar consulta ejemplos
+		    		Realizar consulta ejemplos
 					datos = consultasejemplos(indice, idf);
-					Mostrar datos ejemplos*/
+					Mostrar datos ejemplos
 					//final Object[][] table2 = viewejemplos(datos, indice, fileNames);
 					Scanner sc2 = new Scanner(System.in);
 					System.out.println("Pulse ENTER para continuar\n\n");
 					//export(table2, "consulta"+consulta+".txt");
 					consulta ++;
 					if(sc2.hasNextLine())break;
+					*/
 		    	break;
 		    	case(5):
 		    		//Exit
 					exit=1;
-		    		System.out.println("Finalizando...");
+		    		System.out.println("Saliendo...");
 		    	break;
+		    	/*case(6):
+		    		//Exit
+		    		QueryExp q= new QueryExp();
+		    	String query= "What processor obtained the best score in 2009 for the Photoshop benchmark?";
+		    	System.out.println(query+q.getSynonims(query));
+					
+		    	break;*/
 		    	}	
 		    }		
 		}
 	}
 	
 	//Recorre nuestro indice , y diccionario para elaborar los resultados
-	public static ArrayList<Double[]> consulta(Conector mongo,Document idf, String query1){
+	public static ArrayList<Double[]> consulta(Conector mongo,Document idf, String query1) throws IOException{
 		long num=mongo.getCollectionPalabras().count();
 		Document relevancias = (Document) mongo.getCollectionRelevancia().find().first();
+		Document queries =  (Document) mongo.getCollectionDocumentos().find().first();
+		Iterator itQ = queries.entrySet().iterator();
 		Double[] escalarTF = new Double[(int) num];
 		Double[] escalarIDF = new Double[(int) num];
 		Double[] cosenoTF = new Double[(int) num];
@@ -133,40 +142,31 @@ public class Modelos {
 		FindIterable<Document> coleccion = mongo.getCollectionPalabras().find();
 		ArrayList<Double[]> pesos = new ArrayList<Double[]>();
 		Metricas met = new Metricas();
-		for (int i=0; i<num;i++){
-			escalarTF[i]=(double) 0;
-			escalarIDF[i]=(double) 0;
-			cosenoTF[i]= (double) 0;
-			acumuladorD[i]= (double)0;
-			acumuladorIDF[i] = (double) 0;
-			
-		}
-		Map<String,Double> cosenoTFIDF = new HashMap<String, Double>();
-		String query;
-		
-		Document queries =  (Document) mongo.getCollectionDocumentos().find().first();
-		Iterator itQ = queries.entrySet().iterator();
-		int p=0;
 		/*Para recorrer todas las consultas*/
-		  while(itQ.hasNext()){
-			  if(p==0){
-				  
-			 
+		  while(itQ.hasNext()){	  
+				for (int i=0; i<num;i++){
+					escalarTF[i]=(double) 0;
+					escalarIDF[i]=(double) 0;
+					cosenoTF[i]= (double) 0;
+					acumuladorD[i]= (double)0;
+					acumuladorIDF[i] = (double) 0;
+					
+				}
+				Map<String,Double> cosenoTFIDF = new HashMap<String, Double>();
+				String query;
 				Document.Entry a = (Document.Entry)itQ.next();
 				 if(!a.getKey().equals("_id")){
 				idC= (String) a.getKey();
 				contC = (String) a.getValue();
-				
-				
 				query= contC;
-				query = "What processor obtained the best score in 2009 for the Photoshop benchmark?";
+				
 				//Separamos la query y sus palabras
 		        String[] palabra = query.split("[^a-zA-Z0-9]");
 		        Map<String, Integer> map = new HashMap<String, Integer>();
 		        //Creo mapa de la query
 				for (int i=0; i<palabra.length; i++){
 					String value = palabra[i].toLowerCase();
-					if (!palabra[i].equals("") && palabra[i].length()>1){
+					if (!palabra[i].equals("") && palabra[i].length()>2){
 						if (map.containsKey(value)){
 							map.put(value, (int)map.get(value)+1);
 						}
@@ -245,26 +245,47 @@ public class Modelos {
 					numero++;
 					}
 				}
-				System.out.println(smap);
+				//System.out.println(smap);
 				MapComparator bvc2= new MapComparator(top);
 				TreeMap<String, Double> smap100 = new TreeMap<String, Double>(bvc);
 				smap100.putAll(top);
 	
-				double precision = met.precision(5, smap100, idC, relevancias);
-				double recall = met.recall(5, smap100, idC, relevancias);
-				double fmeasure = met.f_measure(precision, recall, 1);
+				double precision5 = met.precision(5, 1, smap100, idC, relevancias);
+				double precision10 = met.precision(10, 1, smap100, idC, relevancias);
+				double recall5 = met.recall(5, smap100, idC, relevancias);
+				double recall10 = met.recall(10, smap100, idC, relevancias);
+				double fmeasure5 = met.f_measure(precision5, recall5, 1);
+				double fmeasure10 = met.f_measure(precision10, recall10, 1);
 				double rrank1 = met.reciprocalRank(smap100, relevancias, idC, 1);
 				double rrank2 = met.reciprocalRank(smap100, relevancias, idC, 2);
-				System.out.println(smap100);
-				System.out.println("Precision: "+precision);
-				System.out.println("Recall: "+recall);
-				System.out.println("Fmeasure: "+fmeasure);
-				System.out.println("Reciprocal Rank(relevancia min 1): "+rrank1);
-				System.out.println("Reciprocal Rank(relevancia min 2): "+rrank2);
-				 p++;
-			}
-		
-		
+				double average = met.averageprecision(100, smap100, idC, relevancias);
+				Double[] nDGC = met.nDGC(10, smap100, idC, relevancias);
+				Double[] nDGC100 = met.nDGC(100, smap100, idC, relevancias);
+				
+				
+				//System.out.println(smap100);
+				/*System.out.println(query);
+				System.out.println(idC);
+				System.out.println("Precision 5: "+ met.roundFourDecimals(precision5));
+				System.out.println("Precision 10: "+met.roundFourDecimals(precision10));
+				System.out.println("Recall 5: "+met.roundFourDecimals(recall5));
+				System.out.println("Recall 10: "+met.roundFourDecimals(recall10));
+				System.out.println("Fmeasure 5: "+met.roundFourDecimals(fmeasure5));
+				System.out.println("Fmeasure 10: "+met.roundFourDecimals(fmeasure10));
+				System.out.println("Reciprocal Rank(relevancia min 1): "+met.roundFourDecimals(rrank1));
+				System.out.println("Reciprocal Rank(relevancia min 2): "+met.roundFourDecimals(rrank2));
+				System.out.println("Average Precision: "+met.roundFourDecimals(average));
+				for(int k=0;k<nDGC.length;k++){
+					System.out.print("nDGC: "+k +" "+met.roundFourDecimals(nDGC[k])+", ");
+		    	}
+				System.out.println("");
+		    	for(int k=0;k<nDGC100.length;k++){
+					System.out.print("nDGC: "+k +" "+met.roundFourDecimals(nDGC100[k])+", ");
+		    	}
+		    	System.out.println("");
+		    	System.out.println("");
+		    	*/
+				export(precision5, precision10, recall5, recall10, fmeasure5, fmeasure10, rrank1, rrank2, average, nDGC, nDGC100, query, idC);
 			  }
 		  }
 		return pesos;
@@ -286,84 +307,36 @@ public class Modelos {
 	    return names;
 	}
 	
-
-	
-	/*Muestra la tabla de resultados de la consulta 
-	public static Object[][] view(ArrayList<Double[]> datos, ArrayList<Map<String,Integer>> indice, List<String> fileNames ){
-		final Object[][] table = new String[indice.size()+1][];
-		table[0]= new String[] { "Docs ", "escalar TF", "escalar IDF", "coseno TF", "coseno IDF" };
-		for(int i=0; i<indice.size();i++){	
-			table[i+1] = new String[] {fileNames.get(i), datos.get(0)[i].toString(), String.format("%.4f", datos.get(1)[i]),String.format("%.4f", datos.get(2)[i]),String.format("%.4f", datos.get(3)[i]) };
-		}
-		for (final Object[] row : table) {
-		    System.out.format("%-33s%-15s%-15s%-15s%-15s\n", row);
-		}
-		System.out.println("\n\n");
-		return table;
-	}
-	
-	//Realiza las consultas de ejemplos establecidas en el enunciado
-	public static ArrayList<Double[]> consultasejemplos (ArrayList<Map<String,Integer>> indice, Map<String,Integer> idf){
-		ArrayList<Double[]> datosQ1 = new ArrayList<Double[]>();
-		ArrayList<Double[]> datosQ2 = new ArrayList<Double[]>();
-		ArrayList<Double[]> datosQ3 = new ArrayList<Double[]>();
-		datosQ1 = consulta(indice, idf, "What video game won Spike�s best driving game award in 2006?");
-		datosQ2 = consulta(indice, idf, "What is the default combination of Kensington cables?");
-		datosQ3 = consulta(indice, idf, "Who won the first ACM Gerard Salton prize?");
-		
-		ArrayList<Double[]> Q123 = new ArrayList<Double[]>();
-		for (int i =0; i<4;i++){
-			Q123.add(datosQ1.get(i));
-			Q123.add(datosQ2.get(i));
-			Q123.add(datosQ3.get(i));
-		}
-		
-		return Q123;
-	}
-	
-	//Crea la tabla de visualizacion de los ejemplos de querys requeridos
-	public static Object[][] viewejemplos(ArrayList<Double[]> datos, ArrayList<Map<String,Integer>> indice, List<String> fileNames ){
-		final Object[][] table = new String[((indice.size()+1)*4)+1][];
-		table[0]= new String[] { "Docs ", "Q1", "Q2", "Q3" };
-		table[1]= new String[] { "* RELEVANCIA: ProductoEscalarTF", "......", "......", "......"};
-		for(int i=0; i<indice.size();i++){
-			table[i+2] = new String[] {fileNames.get(i), datos.get(0)[i].toString(), datos.get(1)[i].toString(),datos.get(2)[i].toString()};
-		}
-		table[indice.size()+1+1]= new String[] { "* RELEVANCIA: ProductoEscalarTFIDF", "......", "......", "......"};
-		for(int i=0; i<indice.size();i++){
-			table[i+indice.size()+1+2] = new String[] {fileNames.get(i), String.format("%.4f",datos.get(3)[i]), String.format("%.4f",datos.get(4)[i]), String.format("%.4f",datos.get(5)[i])};
-		}
-		table[((indice.size()+1)*2)+1]= new String[] { "* RELEVANCIA: CosenoTF", "......", "......", "......"};
-		for(int i=0; i<indice.size();i++){
-			table[i+((indice.size()+1)*2)+2] = new String[] {fileNames.get(i), String.format("%.4f",datos.get(6)[i]), String.format("%.4f",datos.get(7)[i]), String.format("%.4f",datos.get(8)[i])};
-		}
-		table[((indice.size()+1)*3)+1]= new String[] { "* RELEVANCIA: CosenoTFIDF", "......", "......", "......"};
-		for(int i=0; i<indice.size();i++){
-			table[i+((indice.size()+1)*3)+2] = new String[] {fileNames.get(i), String.format("%.4f",datos.get(9)[i]), String.format("%.4f",datos.get(10)[i]),String.format("%.4f",datos.get(11)[i])};
-		}
-		
-		for (final Object[] row : table) {
-		    System.out.format("%-33s%-15s%-15s%-15s\n", row);
-		}
-		System.out.println("\n\n");
-		
-		return table;
-	}
-	
-	//Extrae la tabla de resultados a un archivo .txt
-	public static void export(final Object[][] table1, String output) throws IOException{
-		File file = new File("./outputs/", output);
+	//Extraer resultados a un archivo .txt
+	public static void export( double precision5,double precision10,double recall5,double recall10,double fmeasure5,double fmeasure10,double rrank1,double rrank2,double average, Double[] nDGC, Double[] nDGC100, String query, String idC ) throws IOException{
+		File file = new File("./outputs/", idC);
+		Metricas met = new Metricas();
 		FileWriter archivo = new FileWriter(file);
-		for (int i=0;i<table1.length;i++){
-			for (int j=0; j<table1[i].length;j++){
-				archivo.write((table1[i][j]).toString());
-				archivo.write("\t\t\t");
-			}
-			archivo.write("\n");
-		}
+		archivo.write("Conslta: "+query+"\n");
+		archivo.write("ID consulta: "+idC+"\n");
+		archivo.write("Precision 5: "+ met.roundFourDecimals(precision5)+"\n");
+		archivo.write("Precision 10: "+ met.roundFourDecimals(precision10)+"\n");
+		archivo.write("Recall 5: "+ met.roundFourDecimals(recall5)+"\n");
+		archivo.write("Recall 10: "+ met.roundFourDecimals(recall10)+"\n");
+		archivo.write("Fmeasure 5: "+ met.roundFourDecimals(fmeasure5)+"\n");
+		archivo.write("Fmeasure 10: "+ met.roundFourDecimals(fmeasure10)+"\n");
+		archivo.write("Reciprocal Rank(relevancia min 1): "+met.roundFourDecimals(rrank1)+"\n");
+		archivo.write("Reciprocal Rank(relevancia min 1): "+met.roundFourDecimals(rrank2)+"\n");
+		archivo.write("Average Precision: "+average+"\n");
+		archivo.write("nDGC10: \n");
+		for(int k=0;k<nDGC.length;k++){
+			archivo.write(met.roundFourDecimals(nDGC[k])+"; ");
+    	}
+		archivo.write("\n");
+		archivo.write("nDGC100: \n");
+    	for(int k=0;k<nDGC100.length;k++){
+    		archivo.write(met.roundFourDecimals(nDGC100[k])+"; ");
+    	}
+    	archivo.write("\n");
+
 		archivo.close();
-		System.out.println(" Consulta guardada en la carpeta outputs, nombre : "+ output);
+		System.out.println(" Consulta guardada en la carpeta outputs, nombre : "+ idC);
 	}
-*/
+
 	
 }
