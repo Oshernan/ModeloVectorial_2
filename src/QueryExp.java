@@ -17,6 +17,8 @@ public class QueryExp {
 					String[] wordForms = null;
 					ArrayList<String> query1 = new ArrayList<String>();
 					Synset[] synsets= null;
+					palabra = limpiarLetras(palabra);
+					
 					for(int k= 0;k<palabra.length; k++){
 					//Synset[] synsets = database.getSynsets(palabra[k]);
 						synsets = database.getSynsets(palabra[k], SynsetType.NOUN);
@@ -33,26 +35,23 @@ public class QueryExp {
 							synsets = database.getSynsets(palabra[k], SynsetType.NOUN);
 						}
 						
-					if (synsets.length > 0){
-						for (int i = 0; i < synsets.length; i++)					
-						{
-						wordForms = synsets[i].getWordForms();
-						for (int j = 0; j < wordForms.length; j++)
-							
-						{
-							consEXP = consEXP +" "+wordForms[j];
+						if (synsets.length > 0){
+							for (int i = 0; i < synsets.length; i++){
+								wordForms = synsets[i].getWordForms();
+								for (int j = 0; j < wordForms.length; j++)	{
+									consEXP = consEXP +" "+wordForms[j];
+								}
+							}
 						}
 					}
-					}
-					}
 					
-					/*
-					ArrayList<String> p= removeRepeats(consulta);
-					for (int b=0; b<p.size(); b++){
-						consEXP= consEXP +" "+ p.get(b);
-					}
-					*/
-					return query+" "+consEXP;
+					 String p=query+" "+consEXP;
+	                    String fin="";
+	                    ArrayList<String> lista=removeRepeats(p);
+	                    for (int i=0;i<lista.size();i++){
+	                        fin = fin +" "+ lista.get(i);
+	                    }
+	                    return fin;
 					}//for1
 				
 
@@ -77,14 +76,18 @@ public class QueryExp {
 		//limpiarLetras(distintas);
 		return distintas;
 	}
-	private ArrayList<String> limpiarLetras(ArrayList<String> palabras){
-		
-		for(int i=0; i<palabras.size(); i++){
-			if(palabras.get(i).length()<=2){
-				palabras.remove(i);
+	private String[] limpiarLetras(String[] palabras){
+		ArrayList<String> query1 = new ArrayList<String>();
+		for(int i=0; i<palabras.length; i++){
+			if(palabras[i].length()>2){
+				query1.add(palabras[i]);
 			}
 		}
-		return palabras;
+		String[] aux = new String[query1.size()];
+		for(int i =0; i<query1.size();i++){
+			aux[i] = query1.get(i);
+		}
+		return aux;
 	}
 			
 			

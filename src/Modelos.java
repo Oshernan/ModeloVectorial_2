@@ -44,7 +44,7 @@ public class Modelos {
 		
 		while (exit ==0){
 			
-			System.out.println("Porfavor indique la operaci�n que desea realizar\n"
+			System.out.println("Porfavor indique la operación que desea realizar\n"
 					+ " Para crear los diccionarios pulse:  1\n"
 					+ " Para leer las relevancias asignadas a consultas:  2\n"
 					+ " Para evaluar el Motor a partir de las consultas fijadas:  3\n"
@@ -52,7 +52,7 @@ public class Modelos {
 					+ " Para salir pulse:  5\n");
 			Scanner sc = new Scanner(System.in);
 		    int input = sc.nextInt();
-		    if (input < 1 || input >5) System.out.println("Opci�n incorrecta\n");
+		    if (input < 1 || input >6) System.out.println("Opciï¿½n incorrecta\n");
 		    else{
 		    	switch(input){
 		    	
@@ -77,7 +77,7 @@ public class Modelos {
 		    	case(3):
 		    		
 		    		Document doc =  (Document) mongo.getCollectionIdf().find().first();
-					datos = consulta(mongo, (Document) doc, "");
+					datos = consulta(mongo, (Document) doc, false);
 					
 					//Mostrar datos
 					//final Object[][] table1 = view(datos, indice, fileNames);
@@ -88,7 +88,16 @@ public class Modelos {
 					if(sc1.hasNextLine())break;
 				
 		    	case(4):
-		    		
+		    		Document docExp =  (Document) mongo.getCollectionIdf().find().first();
+					datos = consulta(mongo, (Document) docExp, true);
+					
+					//Mostrar datos
+					//final Object[][] table1 = view(datos, indice, fileNames);
+					Scanner scExp = new Scanner(System.in);
+					System.out.println("Pulse ENTER para continuar\n\n");
+					//export(table1, "consulta"+consulta+".txt");
+					
+					if(scExp.hasNextLine())break;
 		    		
 		    		/*--------------
 		    		if (indice.isEmpty()){
@@ -111,20 +120,20 @@ public class Modelos {
 					exit=1;
 		    		System.out.println("Saliendo...");
 		    	break;
-		    	/*case(6):
+		    	case(6):
 		    		//Exit
 		    		QueryExp q= new QueryExp();
 		    	String query= "What processor obtained the best score in 2009 for the Photoshop benchmark?";
-		    	System.out.println(query+q.getSynonims(query));
+		    	System.out.println(q.getSynonims(query));
 					
-		    	break;*/
+		    	break;
 		    	}	
 		    }		
 		}
 	}
 	
 	//Recorre nuestro indice , y diccionario para elaborar los resultados
-	public static ArrayList<Double[]> consulta(Conector mongo,Document idf, String query1) throws IOException{
+	public static ArrayList<Double[]> consulta(Conector mongo,Document idf, boolean expand) throws IOException{
 		long num=mongo.getCollectionPalabras().count();
 		Document relevancias = (Document) mongo.getCollectionRelevancia().find().first();
 		Document queries =  (Document) mongo.getCollectionDocumentos().find().first();
@@ -159,6 +168,10 @@ public class Modelos {
 				idC= (String) a.getKey();
 				contC = (String) a.getValue();
 				query= contC;
+				if (expand==true){
+					QueryExp q= new QueryExp();
+					query=q.getSynonims(query);
+				}
 				
 				//Separamos la query y sus palabras
 		        String[] palabra = query.split("[^a-zA-Z0-9]");
@@ -285,7 +298,7 @@ public class Modelos {
 		    	System.out.println("");
 		    	System.out.println("");
 		    	*/
-				export(precision5, precision10, recall5, recall10, fmeasure5, fmeasure10, rrank1, rrank2, average, nDGC, nDGC100, query, idC);
+				export(precision5, precision10, recall5, recall10, fmeasure5, fmeasure10, rrank1, rrank2, average, nDGC, nDGC100, query, idC, expand);
 			  }
 		  }
 		return pesos;
@@ -308,11 +321,12 @@ public class Modelos {
 	}
 	
 	//Extraer resultados a un archivo .txt
-	public static void export( double precision5,double precision10,double recall5,double recall10,double fmeasure5,double fmeasure10,double rrank1,double rrank2,double average, Double[] nDGC, Double[] nDGC100, String query, String idC ) throws IOException{
+	public static void export( double precision5,double precision10,double recall5,double recall10,double fmeasure5,double fmeasure10,double rrank1,double rrank2,double average, Double[] nDGC, Double[] nDGC100, String query, String idC, boolean expand ) throws IOException{
 		File file = new File("./outputs/", idC);
+		if (expand == true)  file = new File("./outputs/", idC+"Exp");
 		Metricas met = new Metricas();
 		FileWriter archivo = new FileWriter(file);
-		archivo.write("Conslta: "+query+"\n");
+		archivo.write("Consulta: "+query+"\n");
 		archivo.write("ID consulta: "+idC+"\n");
 		archivo.write("Precision 5: "+ met.roundFourDecimals(precision5)+"\n");
 		archivo.write("Precision 10: "+ met.roundFourDecimals(precision10)+"\n");
@@ -321,8 +335,8 @@ public class Modelos {
 		archivo.write("Fmeasure 5: "+ met.roundFourDecimals(fmeasure5)+"\n");
 		archivo.write("Fmeasure 10: "+ met.roundFourDecimals(fmeasure10)+"\n");
 		archivo.write("Reciprocal Rank(relevancia min 1): "+met.roundFourDecimals(rrank1)+"\n");
-		archivo.write("Reciprocal Rank(relevancia min 1): "+met.roundFourDecimals(rrank2)+"\n");
-		archivo.write("Average Precision: "+average+"\n");
+		archivo.write("Reciprocal Rank(relevancia min 2): "+met.roundFourDecimals(rrank2)+"\n");
+		archivo.write("Average Precision: "+met.roundFourDecimals(average)+"\n");
 		archivo.write("nDGC10: \n");
 		for(int k=0;k<nDGC.length;k++){
 			archivo.write(met.roundFourDecimals(nDGC[k])+"; ");
@@ -335,7 +349,8 @@ public class Modelos {
     	archivo.write("\n");
 
 		archivo.close();
-		System.out.println(" Consulta guardada en la carpeta outputs, nombre : "+ idC);
+		if (expand == true) System.out.println(" Consulta guardada en la carpeta outputs, nombre : "+ idC+"Exp");
+		else System.out.println(" Consulta guardada en la carpeta outputs, nombre : "+ idC);
 	}
 
 	
