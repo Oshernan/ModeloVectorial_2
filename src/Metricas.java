@@ -71,20 +71,20 @@ public class Metricas {
 	private double r_rank1;
 	private double r_rank2;
 	private double averagePrecision;
-	private double NDGC10;
-	private double NDGC100;
+	private double NDCG10;
+	private double NDCG100;
 	
-	public double getNDGC10() {
-		return NDGC10;
+	public double getNDCG10() {
+		return NDCG10;
 	}
-	public void setNDGC10(double nDGC10) {
-		NDGC10 = nDGC10;
+	public void setNDCG10(double nDCG10) {
+		NDCG10 = nDCG10;
 	}
-	public double getNDGC100() {
-		return NDGC100;
+	public double getNDCG100() {
+		return NDCG100;
 	}
-	public void setNDGC100(double nDGC100) {
-		NDGC100 = nDGC100;
+	public void setNDGC100(double nDCG100) {
+		NDCG100 = nDCG100;
 	}
 	public Metricas(){
 		
@@ -247,9 +247,9 @@ public class Metricas {
         this.averagePrecision= result;
     }
     
-    public void nDGC10 (TreeMap<String, Double> smap, String queryId, Document relevancias){
+    public void nDCG10 (TreeMap<String, Double> smap, String queryId, Document relevancias){
     	
-		Double[] DGC = calcularDGC10(smap,  queryId, relevancias);
+		Double[] DGC = calcularDCG(10,smap,  queryId, relevancias);
     	Document auxorder = ordenarRelevancias(relevancias, queryId);
     	Double[] DGCi = calcularDGCideal(10,smap,  queryId, auxorder);
     	//System.out.println(auxorder);
@@ -259,12 +259,12 @@ public class Metricas {
     		if (DGC[i]==0)nDGC[i]=0.0;
     		else nDGC[i] = DGC[i]/DGCi[i];
     	}    	
-    	this.NDGC10=nDGC[9];
+    	this.NDCG10=nDGC[9];
     }
     
-    public void nDGC100 (TreeMap<String, Double> smap, String queryId, Document relevancias){
+    public void nDCG100 (TreeMap<String, Double> smap, String queryId, Document relevancias){
     	
-		Double[] DGC = calcularDGC100(smap,  queryId, relevancias);
+		Double[] DGC = calcularDCG(100,smap,  queryId, relevancias);
     	Document auxorder = ordenarRelevancias(relevancias, queryId);
     	Double[] DGCi = calcularDGCideal(100,smap,  queryId, auxorder);
     	//System.out.println(auxorder);
@@ -274,101 +274,54 @@ public class Metricas {
     		if (DGC[i]==0)nDGC[i]=0.0;
     		else nDGC[i] = DGC[i]/DGCi[i];
     	}    	
-    	this.NDGC100=nDGC[99];
+    	this.NDCG100=nDGC[99];
     }
     
-    private static Double[] calcularDGC10 (TreeMap<String, Double> smap, String queryId, Document relevancias){
-    	int i =0;
-    	Double[] G = new Double[10];
-    	Double[] CG = new Double[10];
-    	
-		for(Entry<String, Double> entry : smap.entrySet()){
-			 boolean find = false;
-			 if(i<10){
-				 Iterator it = relevancias.entrySet().iterator();
-			     while (it.hasNext()) {
-			         Document.Entry e = (Document.Entry)it.next();
-			         if(!e.getKey().equals("_id")&&(((String) e.getKey()).contains(queryId+"|"+entry.getKey()))){
-			        	 if (i!=0){
-			        		 CG[i]=CG[i-1]+ Double.parseDouble(e.getValue().toString());
-			        	 }else{
-			        		 CG[i]=Double.parseDouble(e.getValue().toString());
-			        	 }
-			        	 G[i]=Double.parseDouble(e.getValue().toString());
-			        	 i++;
-			        	 find =true;
-			        	 break;
-			         }
-			     }
-			     if (find==false){
-			    	 if(i==0){
-				    	 CG[i]=0.0;
-				     }
-			         else{
-			        	 CG[i]=CG[i-1];
-			         }
-			         G[i]=0.0;
-			         i++;
-			     } 
-			 }  
-		}
-    	Double[] DGC=new Double[10];
-    	for (int j=0;j<10;j++){
-    		if (j<1){
-    			DGC[j]=CG[j];
-    		}else{
-    			if(G[j]!=0) DGC[j]=(double)(DGC[j-1]+((double)G[j]/(double)(Math.log10(j+1)/ (double)Math.log10(2))));
-    			else DGC[j]=DGC[j-1];
-    		}
-    	}
-    	return DGC;
-    }
-    
-    private static Double[] calcularDGC100 (TreeMap<String, Double> smap, String queryId, Document relevancias){
-    	int i =0;
-    	Double[] G = new Double[100];
-    	Double[] CG = new Double[100];
-    	
-		for(Entry<String, Double> entry : smap.entrySet()){
-			 boolean find = false;
-			 if(i<100){
-				 Iterator it = relevancias.entrySet().iterator();
-			     while (it.hasNext()) {
-			         Document.Entry e = (Document.Entry)it.next();
-			         if(!e.getKey().equals("_id")&&(((String) e.getKey()).contains(queryId+"|"+entry.getKey()))){
-			        	 if (i!=0){
-			        		 CG[i]=CG[i-1]+ Double.parseDouble(e.getValue().toString());
-			        	 }else{
-			        		 CG[i]=Double.parseDouble(e.getValue().toString());
-			        	 }
-			        	 G[i]=Double.parseDouble(e.getValue().toString());
-			        	 i++;
-			        	 find =true;
-			        	 break;
-			         }
-			     }
-			     if (find==false){
-			    	 if(i==0){
-				    	 CG[i]=0.0;
-				     }
-			         else{
-			        	 CG[i]=CG[i-1];
-			         }
-			         G[i]=0.0;
-			         i++;
-			     } 
-			 }  
-		}
-    	Double[] DGC=new Double[100];
-    	for (int j=0;j<100;j++){
-    		if (j<1){
-    			DGC[j]=CG[j];
-    		}else{
-    			if(G[j]!=0) DGC[j]=(double)(DGC[j-1]+((double)G[j]/(double)(Math.log10(j+1)/ (double)Math.log10(2))));
-    			else DGC[j]=DGC[j-1];
-    		}
-    	}
-    	return DGC;
+    private static Double[] calcularDCG (int cortes,TreeMap<String, Double> smap, String queryId, Document relevancias){
+        int i =0;
+        Double[] G = new Double[cortes];
+        Double[] CG = new Double[cortes];
+        
+        for(Entry<String, Double> entry : smap.entrySet()){
+             boolean find = false;
+             if(i<cortes){
+                 Iterator it = relevancias.entrySet().iterator();
+                 while (it.hasNext()) {
+                     Document.Entry e = (Document.Entry)it.next();
+                     if(!e.getKey().equals("_id")&&(((String) e.getKey()).contains(queryId+"|"+entry.getKey()))){
+                         if (i!=0){
+                             CG[i]=CG[i-1]+ Double.parseDouble(e.getValue().toString());
+                         }else{
+                             CG[i]=Double.parseDouble(e.getValue().toString());
+                         }
+                         G[i]=Double.parseDouble(e.getValue().toString());
+                         i++;
+                         find =true;
+                         break;
+                     }
+                 }
+                 if (find==false){
+                     if(i==0){
+                         CG[i]=0.0;
+                     }
+                     else{
+                         CG[i]=CG[i-1];
+                     }
+                     G[i]=0.0;
+                     i++;
+                 } 
+             }  
+        }
+        Double[] DGC=new Double[cortes];
+        for (int j=0;j<cortes;j++){
+            if (j<1){
+                DGC[j]=CG[j];
+            }else{
+                if(G[j]!=0) DGC[j]=(double)(DGC[j-1]+((double)G[j]/(double)(Math.log10(j+1)/ (double)Math.log10(2))));
+                else DGC[j]=DGC[j-1];
+            }
+        }
+        return DGC;
     }
     
     private static Double[] calcularDGCideal (int cortes,TreeMap<String, Double> smap, String queryId, Document relevancias){

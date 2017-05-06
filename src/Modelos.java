@@ -218,10 +218,10 @@ public class Modelos {
 				        		else{
 				        			if(diccionario.containsKey(word)){
 					        			//Acumulo valores para cada html en mi indice
-					        			escalarTF[i]+=0*Funcionalidades.escalarTF(diccionario.getInteger(word),entry.getValue());
+					        			escalarTF[i]+=Funcionalidades.escalarTF(diccionario.getInteger(word),entry.getValue());
 					        			
 					        			//Penalizar aqui
-					        			escalarIDF[i]+=0*Funcionalidades.escalarIDF(diccionario.getInteger(word), 0*entry.getValue(),num,(double)idf.getInteger(word));
+					        			escalarIDF[i]+=0.5*Funcionalidades.escalarIDF(diccionario.getInteger(word), entry.getValue(),num,(double)idf.getInteger(word));
 					        		}
 					        		i++;
 				        		}
@@ -235,7 +235,7 @@ public class Modelos {
 				        	if(containsWord(palabraO,word))
 				        	acumuladorQidf+=(Math.pow(entry.getValue()*idf1, 2));
 				        	else
-				        		acumuladorQidf+=0*(Math.pow(entry.getValue()*idf1, 2));
+				        		acumuladorQidf+=(Math.pow(entry.getValue()*idf1, 2));
 				        	
 				        }
 						int i=0;
@@ -305,8 +305,8 @@ public class Modelos {
 						met.reciprocalRank1(smap100, relevancias, idC);
 						met.reciprocalRank2(smap100, relevancias, idC);
 						met.averageprecision(smap100, idC, relevancias);
-						met.nDGC10(smap100, idC, relevancias);
-						met.nDGC100(smap100, idC, relevancias);
+						met.nDCG10(smap100, idC, relevancias);
+						met.nDCG100(smap100, idC, relevancias);
 						
 						resultados.add(met);
 						
@@ -332,7 +332,7 @@ public class Modelos {
 				    	System.out.println("");
 				    	System.out.println("");
 				    	*/
-						export(met.getPrecision5(), met.getPrecision10(), met.getRecall5(), met.getRecall10(), met.getF_measure5(), met.getF_measure10(), met.getR_rank1(), met.getR_rank2(), met.getAveragePrecision(), met.getNDGC10(), met.getNDGC100(), query, idC, expand,imprimirRecuperaciones(smap100, relevancias,idC) );
+						export(met, query, idC, expand,imprimirRecuperaciones(smap100, relevancias,idC) );
 					  }
 				  }
 		exportAverage(resultados, expand);
@@ -356,7 +356,7 @@ public class Modelos {
 	}
 	
 	//Extraer resultados a un archivo .txt
-	public static void export( double precision5,double precision10,double recall5,double recall10,double fmeasure5,double fmeasure10,double rrank1,double rrank2,double average, double nDGC, double nDGC100, String query, String idC, boolean expand,String orden ) throws IOException{
+	public static void export(Metricas m, String query, String idC, boolean expand,String orden ) throws IOException{
 		File file = new File("./outputs/", idC);
 		if (expand == true)  file = new File("./outputs/", idC+"Exp");
 		Metricas met = new Metricas();
@@ -364,21 +364,21 @@ public class Modelos {
 		archivo.write("Consulta: "+query+"\n");
 		archivo.write("ID consulta: "+idC+"\n");
 		archivo.write(orden);
-		archivo.write("Precision 5: "+ roundFourDecimals(precision5)+"\n");
-		archivo.write("Precision 10: "+ roundFourDecimals(precision10)+"\n");
-		archivo.write("Recall 5: "+ roundFourDecimals(recall5)+"\n");
-		archivo.write("Recall 10: "+ roundFourDecimals(recall10)+"\n");
-		archivo.write("Fmeasure 5: "+ roundFourDecimals(fmeasure5)+"\n");
-		archivo.write("Fmeasure 10: "+ roundFourDecimals(fmeasure10)+"\n");
-		archivo.write("Reciprocal Rank(relevancia min 1): "+roundFourDecimals(rrank1)+"\n");
-		archivo.write("Reciprocal Rank(relevancia min 2): "+roundFourDecimals(rrank2)+"\n");
-		archivo.write("Average Precision: "+roundFourDecimals(average)+"\n");
-		archivo.write("nDGC10: \n");
-			archivo.write(roundFourDecimals(nDGC)+"; ");
+		archivo.write("Precision 5: "+ roundFourDecimals(m.getPrecision5())+"\n");
+		archivo.write("Precision 10: "+ roundFourDecimals(m.getPrecision10())+"\n");
+		archivo.write("Recall 5: "+ roundFourDecimals(m.getRecall5())+"\n");
+		archivo.write("Recall 10: "+ roundFourDecimals(m.getRecall10())+"\n");
+		archivo.write("Fmeasure 5: "+ roundFourDecimals(m.getF_measure5())+"\n");
+		archivo.write("Fmeasure 10: "+ roundFourDecimals(m.getF_measure10())+"\n");
+		archivo.write("Reciprocal Rank(relevancia min 1): "+roundFourDecimals(m.getR_rank1())+"\n");
+		archivo.write("Reciprocal Rank(relevancia min 2): "+roundFourDecimals(m.getR_rank2())+"\n");
+		archivo.write("Average Precision: "+roundFourDecimals(m.getAveragePrecision())+"\n");
+		archivo.write("nDCG10: \n");
+			archivo.write(roundFourDecimals(m.getNDCG10())+"; ");
 
 		archivo.write("\n");
-		archivo.write("nDGC100: \n");
-    	archivo.write(roundFourDecimals(nDGC100)+"; ");
+		archivo.write("nDCG100: \n");
+    	archivo.write(roundFourDecimals(met.getNDCG100())+"; ");
     	archivo.write("\n");
 
 		archivo.close();
@@ -399,8 +399,8 @@ public class Modelos {
 			mediaAP += resultados.get(i).getAveragePrecision();
 			mediaRR1 += resultados.get(i).getR_rank1();
 			mediaRR2 += resultados.get(i).getR_rank2();
-			mediaNDGC10 += resultados.get(i).getNDGC10();
-			mediaNDGC100 += resultados.get(i).getNDGC100();
+			mediaNDGC10 += resultados.get(i).getNDCG10();
+			mediaNDGC100 += resultados.get(i).getNDCG100();
 		}
 		FileWriter archivo = new FileWriter(file);
 		archivo.write("Average"+"\n");
