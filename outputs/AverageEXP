@@ -1,0 +1,12 @@
+Average
+Precision 5: 0,6300
+Precision 10: 0,5950
+Recall 5: 0,0576
+Recall 10: 0,1104
+Fmeasure 5: 0,1052
+Fmeasure 10: 0,1843
+Reciprocal Rank(relevancia min 1): 0,6616
+Reciprocal Rank(relevancia min 2): 0,3655
+Average Precision: 0,5493
+nDGC10:0,4368
+nDGC100:0,6855

@@ -1,6 +1,7 @@
 //Libreria Lucene , indizar
 import java.awt.Desktop;
 import java.io.*;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -134,10 +135,15 @@ public class Modelos {
 	
 	//Recorre nuestro indice , y diccionario para elaborar los resultados
 	public static ArrayList<Double[]> consulta(Conector mongo,Document idf, boolean expand) throws IOException{
+		ArrayList <Metricas> resultados = new ArrayList<Metricas>();
 		long num=mongo.getCollectionPalabras().count();
 		Document relevancias = (Document) mongo.getCollectionRelevancia().find().first();
 		Document queries =  (Document) mongo.getCollectionDocumentos().find().first();
 		Iterator itQ = queries.entrySet().iterator();
+		double aumento1=0.0;
+		double aumento2=0.0;
+		double aumento3=0.0;
+		double aumento4=0.0;
 		Double[] escalarTF = new Double[(int) num];
 		Double[] escalarIDF = new Double[(int) num];
 		Double[] cosenoTF = new Double[(int) num];
@@ -150,9 +156,11 @@ public class Modelos {
 		String contC;
 		FindIterable<Document> coleccion = mongo.getCollectionPalabras().find();
 		ArrayList<Double[]> pesos = new ArrayList<Double[]>();
-		Metricas met = new Metricas();
+		
 		/*Para recorrer todas las consultas*/
-		  while(itQ.hasNext()){	  
+		  while(itQ.hasNext()){
+			  acumuladorQidf=0.0;
+			  Metricas met = new Metricas();
 				for (int i=0; i<num;i++){
 					escalarTF[i]=(double) 0;
 					escalarIDF[i]=(double) 0;
@@ -163,144 +171,171 @@ public class Modelos {
 				}
 				Map<String,Double> cosenoTFIDF = new HashMap<String, Double>();
 				String query;
+				String queryO;
 				Document.Entry a = (Document.Entry)itQ.next();
 				 if(!a.getKey().equals("_id")){
-				idC= (String) a.getKey();
-				contC = (String) a.getValue();
-				query= contC;
-				if (expand==true){
-					QueryExp q= new QueryExp();
-					query=q.getSynonims(query);
-				}
-				
-				//Separamos la query y sus palabras
-		        String[] palabra = query.split("[^a-zA-Z0-9]");
-		        Map<String, Integer> map = new HashMap<String, Integer>();
-		        //Creo mapa de la query
-				for (int i=0; i<palabra.length; i++){
-					String value = palabra[i].toLowerCase();
-					if (!palabra[i].equals("") && palabra[i].length()>2){
-						if (map.containsKey(value)){
-							map.put(value, (int)map.get(value)+1);
+						idC= (String) a.getKey();
+						contC = (String) a.getValue();
+						query= contC.toLowerCase();
+						queryO= query;
+						if (expand==true){
+							QueryExp q= new QueryExp();
+							query=q.getSynonims(query);
 						}
-						else{
-							map.put(value, 1);
+						
+						//Separamos la query y sus palabras
+				        String[] palabra = query.split("[^a-zA-Z0-9]");
+				        String[] palabraO = queryO.split("[^a-zA-Z0-9]");
+				        Map<String, Integer> map = new HashMap<String, Integer>();
+				        //Creo mapa de la query
+						for (int i=0; i<palabra.length; i++){
+							String value = palabra[i].toLowerCase();
+							if (!palabra[i].equals("") && palabra[i].length()>2){
+								if (map.containsKey(value)){
+									map.put(value, (int)map.get(value)+1);
+								}
+								else{
+									map.put(value, 1);
+								}
+							}
 						}
-					}
-				}
-	
-				//Busco la palabra en mis docus
-				for (Entry<String, Integer> entry : map.entrySet()) {
-					String word = entry.getKey();
-					int i=0;
-		        	for(Document diccionario : coleccion){
-		        		if(diccionario.containsKey(word)){
-		        			//Acumulo valores para cada html en mi indice
-		        			escalarTF[i]+=Funcionalidades.escalarTF(diccionario.getInteger(word),entry.getValue());
-		        			escalarIDF[i]+=Funcionalidades.escalarIDF(diccionario.getInteger(word), entry.getValue(),num,(double)idf.getInteger(word));
-		        		}
-		        		i++;
-		        	}
-		        	acumuladorQ+=Math.pow(entry.getValue(), 2);
-		        	double idf1 = 0.0;
-		        	if(idf.containsKey(word)){
-		        		idf1 = Funcionalidades.idfword(num,(double)idf.getInteger(word));
-		        	}
-		        	acumuladorQidf+=(Math.pow(entry.getValue()*idf1, 2));
-		        	
-		        }
-				int i=0;
-				String docName=null;
-		    	for(Document diccionario : coleccion){
-		    		Iterator it = diccionario.entrySet().iterator();
-		    		
-		    		while (it.hasNext()) 
-		    		{
-		    			
-		    			 Document.Entry e = (Document.Entry)it.next();
-		    			 if(!e.getKey().equals("_id")){
-		    			 //System.out.println(e.getKey()+"-"+e.getValue());
-		    			acumuladorD[i]+=Math.pow((double)(int)e.getValue(), 2);
-						acumuladorIDF[i]+=(Math.pow((double)(int) e.getValue()*Funcionalidades.idfword(num,(double)idf.getInteger(e.getKey())), 2));
-	
-		    			 }
-		    			 else{
-		    				 docName = (String) e.getValue();
-		    			 }
-		    		}
-		    		cosenoTF[i]=Funcionalidades.cosenoTF(escalarTF[i], acumuladorD[i], acumuladorQ);
-					if(Math.sqrt(acumuladorIDF[i]*acumuladorQidf)==0){
-						/*System.out.println(acumuladorIDF[i]);
-						System.out.println(acumuladorQidf);*/
-						cosenoIDF[i]=(double) -1;
-					}
-					else{
-						cosenoIDF[i]=Funcionalidades.cosenoTFIDF(escalarIDF[i], acumuladorIDF[i], acumuladorQidf);	
-					}
-					cosenoTFIDF.put(docName, cosenoIDF[i]);
-					i++;
-		    	}
-	
-				pesos.add(escalarTF);
-				pesos.add(escalarIDF);
-				pesos.add(cosenoTF);
-				pesos.add(cosenoIDF);
-				
-				MapComparator bvc= new MapComparator(cosenoTFIDF);
-				TreeMap<String, Double> smap = new TreeMap<String, Double>(bvc);
-				smap.putAll(cosenoTFIDF);
-				
-				int numero=0;
-				Map<String,Double> top = new HashMap<String,Double>();
-				for (Entry<String, Double> entrada : smap.entrySet()) {
-					if (numero<100){
-					top.put(entrada.getKey(), entrada.getValue());
-					numero++;
-					}
-				}
-				//System.out.println(smap);
-				MapComparator bvc2= new MapComparator(top);
-				TreeMap<String, Double> smap100 = new TreeMap<String, Double>(bvc);
-				smap100.putAll(top);
-	
-				double precision5 = met.precision(5, 1, smap100, idC, relevancias);
-				double precision10 = met.precision(10, 1, smap100, idC, relevancias);
-				double recall5 = met.recall(5, smap100, idC, relevancias);
-				double recall10 = met.recall(10, smap100, idC, relevancias);
-				double fmeasure5 = met.f_measure(precision5, recall5, 1);
-				double fmeasure10 = met.f_measure(precision10, recall10, 1);
-				double rrank1 = met.reciprocalRank(smap100, relevancias, idC, 1);
-				double rrank2 = met.reciprocalRank(smap100, relevancias, idC, 2);
-				double average = met.averageprecision(100, smap100, idC, relevancias);
-				Double[] nDGC = met.nDGC(10, smap100, idC, relevancias);
-				Double[] nDGC100 = met.nDGC(100, smap100, idC, relevancias);
-				
-				
-				//System.out.println(smap100);
-				/*System.out.println(query);
-				System.out.println(idC);
-				System.out.println("Precision 5: "+ met.roundFourDecimals(precision5));
-				System.out.println("Precision 10: "+met.roundFourDecimals(precision10));
-				System.out.println("Recall 5: "+met.roundFourDecimals(recall5));
-				System.out.println("Recall 10: "+met.roundFourDecimals(recall10));
-				System.out.println("Fmeasure 5: "+met.roundFourDecimals(fmeasure5));
-				System.out.println("Fmeasure 10: "+met.roundFourDecimals(fmeasure10));
-				System.out.println("Reciprocal Rank(relevancia min 1): "+met.roundFourDecimals(rrank1));
-				System.out.println("Reciprocal Rank(relevancia min 2): "+met.roundFourDecimals(rrank2));
-				System.out.println("Average Precision: "+met.roundFourDecimals(average));
-				for(int k=0;k<nDGC.length;k++){
-					System.out.print("nDGC: "+k +" "+met.roundFourDecimals(nDGC[k])+", ");
-		    	}
-				System.out.println("");
-		    	for(int k=0;k<nDGC100.length;k++){
-					System.out.print("nDGC: "+k +" "+met.roundFourDecimals(nDGC100[k])+", ");
-		    	}
-		    	System.out.println("");
-		    	System.out.println("");
-		    	*/
-				export(precision5, precision10, recall5, recall10, fmeasure5, fmeasure10, rrank1, rrank2, average, nDGC, nDGC100, query, idC, expand);
-			  }
-		  }
+			
+						//Busco la palabra en mis docus
+						for (Entry<String, Integer> entry : map.entrySet()) {
+							String word = entry.getKey();
+							int i=0;
+				        	for(Document diccionario : coleccion){
+				        		if(containsWord(palabraO,word)){
+					        		if(diccionario.containsKey(word)){
+					        			//Acumulo valores para cada html en mi indice
+					        			escalarTF[i]+=Funcionalidades.escalarTF(diccionario.getInteger(word),entry.getValue());
+					        			
+					        			//Penalizar aqui
+					        			escalarIDF[i]+=Funcionalidades.escalarIDF(diccionario.getInteger(word), entry.getValue(),num,(double)idf.getInteger(word));
+					        		}
+					        		i++;
+				        		}
+				        		else{
+				        			if(diccionario.containsKey(word)){
+					        			//Acumulo valores para cada html en mi indice
+					        			escalarTF[i]+=0*Funcionalidades.escalarTF(diccionario.getInteger(word),entry.getValue());
+					        			
+					        			//Penalizar aqui
+					        			escalarIDF[i]+=0*Funcionalidades.escalarIDF(diccionario.getInteger(word), 0*entry.getValue(),num,(double)idf.getInteger(word));
+					        		}
+					        		i++;
+				        		}
+				        	}
+				        	
+				        	acumuladorQ+=Math.pow(entry.getValue(), 2);
+				        	double idf1 = 0.0;
+				        	if(idf.containsKey(word)){
+				        		idf1 = Funcionalidades.idfword(num,(double)idf.getInteger(word));
+				        	}
+				        	if(containsWord(palabraO,word))
+				        	acumuladorQidf+=(Math.pow(entry.getValue()*idf1, 2));
+				        	else
+				        		acumuladorQidf+=0*(Math.pow(entry.getValue()*idf1, 2));
+				        	
+				        }
+						int i=0;
+						String docName=null;
+				    	for(Document diccionario : coleccion){
+				    		Iterator it = diccionario.entrySet().iterator();
+				    		
+				    		while (it.hasNext()) 
+				    		{
+				    			
+				    			 Document.Entry e = (Document.Entry)it.next();
+				    			 if(!e.getKey().equals("_id")){
+				    			 //System.out.println(e.getKey()+"-"+e.getValue());
+				    			acumuladorD[i]+=Math.pow((double)(int)e.getValue(), 2);
+								acumuladorIDF[i]+=(Math.pow((double)(int) e.getValue()*Funcionalidades.idfword(num,(double)idf.getInteger(e.getKey())), 2));
+			
+				    			 }
+				    			 else{
+				    				 docName = (String) e.getValue();
+				    			 }
+				    		}
+				    		cosenoTF[i]=Funcionalidades.cosenoTF(escalarTF[i], acumuladorD[i], acumuladorQ);
+							if(Math.sqrt(acumuladorIDF[i]*acumuladorQidf)==0){
+								/*System.out.println(acumuladorIDF[i]);
+								System.out.println(acumuladorQidf);*/
+								cosenoIDF[i]=(double) -1;
+							}
+							else{
+								cosenoIDF[i]=Funcionalidades.cosenoTFIDF(escalarIDF[i], acumuladorIDF[i], acumuladorQidf);	
+							}
+							cosenoTFIDF.put(docName, cosenoIDF[i]);
+							i++;
+				    	}
+			
+						pesos.add(escalarTF);
+						pesos.add(escalarIDF);
+						pesos.add(cosenoTF);
+						pesos.add(cosenoIDF);
+						
+				    	/*System.out.println(escalarIDF.toString());
+				    	System.out.println(acumuladorIDF.toString());*/
+				    	System.out.println(acumuladorQidf);
+						
+						MapComparator bvc= new MapComparator(cosenoTFIDF);
+						TreeMap<String, Double> smap = new TreeMap<String, Double>(bvc);
+						smap.putAll(cosenoTFIDF);
+						
+						int numero=0;
+						Map<String,Double> top = new HashMap<String,Double>();
+						for (Entry<String, Double> entrada : smap.entrySet()) {
+							if (numero<100){
+							top.put(entrada.getKey(), entrada.getValue());
+							numero++;
+							}
+						}
+						//System.out.println(smap);
+						MapComparator bvc2= new MapComparator(top);
+						TreeMap<String, Double> smap100 = new TreeMap<String, Double>(bvc);
+						smap100.putAll(top);
+			
+						met.precision5(1, smap100, idC, relevancias);
+						met.precision10(1, smap100, idC, relevancias);
+						met.recall5(smap100, idC, relevancias);
+						met.recall10(smap100, idC, relevancias);
+						met.f_measure5(met.getPrecision5(), met.getRecall5(), 1);
+						met.f_measure10(met.getPrecision10(), met.getRecall10(), 1);
+						met.reciprocalRank1(smap100, relevancias, idC);
+						met.reciprocalRank2(smap100, relevancias, idC);
+						met.averageprecision(smap100, idC, relevancias);
+						met.nDGC10(smap100, idC, relevancias);
+						met.nDGC100(smap100, idC, relevancias);
+						
+						resultados.add(met);
+						
+						//System.out.println(smap100);
+						/*System.out.println(query);
+						System.out.println(idC);
+						System.out.println("Precision 5: "+ met.roundFourDecimals(precision5));
+						System.out.println("Precision 10: "+met.roundFourDecimals(precision10));
+						System.out.println("Recall 5: "+met.roundFourDecimals(recall5));
+						System.out.println("Recall 10: "+met.roundFourDecimals(recall10));
+						System.out.println("Fmeasure 5: "+met.roundFourDecimals(fmeasure5));
+						System.out.println("Fmeasure 10: "+met.roundFourDecimals(fmeasure10));
+						System.out.println("Reciprocal Rank(relevancia min 1): "+met.roundFourDecimals(rrank1));
+						System.out.println("Reciprocal Rank(relevancia min 2): "+met.roundFourDecimals(rrank2));
+						System.out.println("Average Precision: "+met.roundFourDecimals(average));
+						for(int k=0;k<nDGC.length;k++){
+							System.out.print("nDGC: "+k +" "+met.roundFourDecimals(nDGC[k])+", ");
+				    	}
+						System.out.println("");
+				    	for(int k=0;k<nDGC100.length;k++){
+							System.out.print("nDGC: "+k +" "+met.roundFourDecimals(nDGC100[k])+", ");
+				    	}
+				    	System.out.println("");
+				    	System.out.println("");
+				    	*/
+						export(met.getPrecision5(), met.getPrecision10(), met.getRecall5(), met.getRecall10(), met.getF_measure5(), met.getF_measure10(), met.getR_rank1(), met.getR_rank2(), met.getAveragePrecision(), met.getNDGC10(), met.getNDGC100(), query, idC, expand,imprimirRecuperaciones(smap100, relevancias,idC) );
+					  }
+				  }
+		exportAverage(resultados, expand);
 		return pesos;
 	}
 	//Carga el nombre de los documuntos html
@@ -321,37 +356,106 @@ public class Modelos {
 	}
 	
 	//Extraer resultados a un archivo .txt
-	public static void export( double precision5,double precision10,double recall5,double recall10,double fmeasure5,double fmeasure10,double rrank1,double rrank2,double average, Double[] nDGC, Double[] nDGC100, String query, String idC, boolean expand ) throws IOException{
+	public static void export( double precision5,double precision10,double recall5,double recall10,double fmeasure5,double fmeasure10,double rrank1,double rrank2,double average, double nDGC, double nDGC100, String query, String idC, boolean expand,String orden ) throws IOException{
 		File file = new File("./outputs/", idC);
 		if (expand == true)  file = new File("./outputs/", idC+"Exp");
 		Metricas met = new Metricas();
 		FileWriter archivo = new FileWriter(file);
 		archivo.write("Consulta: "+query+"\n");
 		archivo.write("ID consulta: "+idC+"\n");
-		archivo.write("Precision 5: "+ met.roundFourDecimals(precision5)+"\n");
-		archivo.write("Precision 10: "+ met.roundFourDecimals(precision10)+"\n");
-		archivo.write("Recall 5: "+ met.roundFourDecimals(recall5)+"\n");
-		archivo.write("Recall 10: "+ met.roundFourDecimals(recall10)+"\n");
-		archivo.write("Fmeasure 5: "+ met.roundFourDecimals(fmeasure5)+"\n");
-		archivo.write("Fmeasure 10: "+ met.roundFourDecimals(fmeasure10)+"\n");
-		archivo.write("Reciprocal Rank(relevancia min 1): "+met.roundFourDecimals(rrank1)+"\n");
-		archivo.write("Reciprocal Rank(relevancia min 2): "+met.roundFourDecimals(rrank2)+"\n");
-		archivo.write("Average Precision: "+met.roundFourDecimals(average)+"\n");
+		archivo.write(orden);
+		archivo.write("Precision 5: "+ roundFourDecimals(precision5)+"\n");
+		archivo.write("Precision 10: "+ roundFourDecimals(precision10)+"\n");
+		archivo.write("Recall 5: "+ roundFourDecimals(recall5)+"\n");
+		archivo.write("Recall 10: "+ roundFourDecimals(recall10)+"\n");
+		archivo.write("Fmeasure 5: "+ roundFourDecimals(fmeasure5)+"\n");
+		archivo.write("Fmeasure 10: "+ roundFourDecimals(fmeasure10)+"\n");
+		archivo.write("Reciprocal Rank(relevancia min 1): "+roundFourDecimals(rrank1)+"\n");
+		archivo.write("Reciprocal Rank(relevancia min 2): "+roundFourDecimals(rrank2)+"\n");
+		archivo.write("Average Precision: "+roundFourDecimals(average)+"\n");
 		archivo.write("nDGC10: \n");
-		for(int k=0;k<nDGC.length;k++){
-			archivo.write(met.roundFourDecimals(nDGC[k])+"; ");
-    	}
+			archivo.write(roundFourDecimals(nDGC)+"; ");
+
 		archivo.write("\n");
 		archivo.write("nDGC100: \n");
-    	for(int k=0;k<nDGC100.length;k++){
-    		archivo.write(met.roundFourDecimals(nDGC100[k])+"; ");
-    	}
+    	archivo.write(roundFourDecimals(nDGC100)+"; ");
     	archivo.write("\n");
 
 		archivo.close();
 		if (expand == true) System.out.println(" Consulta guardada en la carpeta outputs, nombre : "+ idC+"Exp");
 		else System.out.println(" Consulta guardada en la carpeta outputs, nombre : "+ idC);
 	}
+	public static void exportAverage(ArrayList<Metricas> resultados, boolean expand) throws IOException{
+		File file = new File("./outputs/", "Average");
+		if (expand == true)  file = new File("./outputs/","AverageEXP");
+		double mediaP10=0.0,mediaP5=0.0,mediaR5=0.0,mediaR10=0.0,mediaf5=0.0,mediaf10=0.0,mediaAP=0.0,mediaRR1=0.0,mediaRR2=0.0, mediaNDGC10=0.0, mediaNDGC100=0.0;
+		for (int i=0; i<resultados.size();i++){
+			mediaP10 += resultados.get(i).getPrecision10();
+			mediaP5 += resultados.get(i).getPrecision5();
+			mediaR5 += resultados.get(i).getRecall5();
+			mediaR10 += resultados.get(i).getRecall10();
+			mediaf5 += resultados.get(i).getF_measure5();
+			mediaf10 += resultados.get(i).getF_measure10();
+			mediaAP += resultados.get(i).getAveragePrecision();
+			mediaRR1 += resultados.get(i).getR_rank1();
+			mediaRR2 += resultados.get(i).getR_rank2();
+			mediaNDGC10 += resultados.get(i).getNDGC10();
+			mediaNDGC100 += resultados.get(i).getNDGC100();
+		}
+		FileWriter archivo = new FileWriter(file);
+		archivo.write("Average"+"\n");
+		archivo.write("Precision 5: "+ roundFourDecimals(mediaP5/resultados.size())+"\n");
+		archivo.write("Precision 10: "+ roundFourDecimals(mediaP10/resultados.size())+"\n");
+		archivo.write("Recall 5: "+ roundFourDecimals(mediaR5/resultados.size())+"\n");
+		archivo.write("Recall 10: "+ roundFourDecimals(mediaR10/resultados.size())+"\n");
+		archivo.write("Fmeasure 5: "+ roundFourDecimals(mediaf5/resultados.size())+"\n");
+		archivo.write("Fmeasure 10: "+ roundFourDecimals(mediaf10/resultados.size())+"\n");
+		archivo.write("Reciprocal Rank(relevancia min 1): "+roundFourDecimals(mediaRR1/resultados.size())+"\n");
+		archivo.write("Reciprocal Rank(relevancia min 2): "+roundFourDecimals(mediaRR2/resultados.size())+"\n");
+		archivo.write("Average Precision: "+roundFourDecimals(mediaAP/resultados.size())+"\n");
+		archivo.write("nDGC10:"+ roundFourDecimals(mediaNDGC10/resultados.size())+"\n");
+		archivo.write("nDGC100:"+ roundFourDecimals(mediaNDGC100/resultados.size())+"\n");
 
+		archivo.close();
+		if (expand == true) System.out.println(" Resultados medios calculados y guardados en: AverageEXP");
+		else System.out.println(" Resultados medios calculados y guardados en: Average");
+	}
+    public static String roundFourDecimals(double d) {
+        DecimalFormat fourDForm = new DecimalFormat("0.0000");
+        //System.out.println(fourDForm.format(d));
+        return fourDForm.format(d);
+    }
+    
+    public static String imprimirRecuperaciones(TreeMap<String, Double> smap, Document relevancias, String queryId){
+    	String docsOrder="";
+        for(Entry<String, Double> entry : smap.entrySet()){
+        	boolean find = false;
+            //System.out.println(entry.getKey()+" "+ entry.getValue());
+            Iterator it = relevancias.entrySet().iterator();
+            while (it.hasNext()) {
+                Document.Entry e = (Document.Entry)it.next();
+                if(!e.getKey().equals("_id")){
+                    //System.out.println(e.getKey()+ " "+e.getValue() + "----------");
+                    //Contamos
+                	if(((String) e.getKey()).contains(queryId+"|"+entry.getKey())){
+                		docsOrder= docsOrder+entry.getKey()+"	"+roundFourDecimals(entry.getValue())+"	"+e.getValue()+"\n";
+                		find=true;
+                	}
+                }
+            }
+            if(!find){
+            	docsOrder= docsOrder+entry.getKey()+" Not found \n";
+            }
+        }
+        return docsOrder;
+    }
+    public static boolean containsWord(String[] palabras, String palabra){
+    	for (int i=0;i<palabras.length;i++){
+    		if(palabras[i].equals(palabra)){
+    			return true;
+    		}
+    	}
+    	return false;
+    }
 	
 }

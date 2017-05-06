@@ -43,14 +43,10 @@ public class WordsParser {
 	private String [] convertSynseType(String [] pos){
 		String [] transform = new String[pos.length];
 		for(int i=0;i<pos.length;i++){
-			if(pos[i].equals("RB")||pos[i].equals("RBR")||pos[i].equals("RBS")){
-				transform[i]="ADVERB";
-			}else if(pos[i].equals("VB")||pos[i].equals("VBD")||pos[i].equals("VBG")||pos[i].equals("VBN")||pos[i].equals("VBP")||pos[i].equals("ZBN")){
-				transform[i]="VERB";
-			}else if(pos[i].equals("JJR")||pos[i].equals("JJ")||pos[i].equals("JJS")){
-				transform[i]="ADJECTIVE";
-			}else{
+			if(pos[i].equals("NN")||pos[i].equals("NNS")||pos[i].equals("NNP")||pos[i].equals("NNPS")){
 				transform[i]="NOUN";
+			}else {
+				transform[i]="No";
 			}
 		}
 		return transform;

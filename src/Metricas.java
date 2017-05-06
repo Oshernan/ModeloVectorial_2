@@ -7,17 +7,96 @@ import org.bson.Document;
 
 public class Metricas {
 
+	public double getPrecision5() {
+		return precision5;
+	}
+	public void setPrecision5(double precision5) {
+		this.precision5 = precision5;
+	}
+	public double getPrecision10() {
+		return precision10;
+	}
+	public void setPrecision10(double precision10) {
+		this.precision10 = precision10;
+	}
+	public double getRecall5() {
+		return recall5;
+	}
+	public void setRecall5(double recall5) {
+		this.recall5 = recall5;
+	}
+	public double getRecall10() {
+		return recall10;
+	}
+	public void setRecall10(double recall10) {
+		this.recall10 = recall10;
+	}
+	public double getF_measure5() {
+		return f_measure5;
+	}
+	public void setF_measure5(double f_measure5) {
+		this.f_measure5 = f_measure5;
+	}
+	public double getF_measure10() {
+		return f_measure10;
+	}
+	public void setF_measure10(double f_measure10) {
+		this.f_measure10 = f_measure10;
+	}
+	public double getR_rank1() {
+		return r_rank1;
+	}
+	public void setR_rank1(double r_rank1) {
+		this.r_rank1 = r_rank1;
+	}
+	public double getR_rank2() {
+		return r_rank2;
+	}
+	public void setR_rank2(double r_rank2) {
+		this.r_rank2 = r_rank2;
+	}
+	public double getAveragePrecision() {
+		return averagePrecision;
+	}
+	public void setAveragePrecision(double averagePrecision) {
+		this.averagePrecision = averagePrecision;
+	}
+
+	private double precision5;
+	private double precision10;
+	private double recall5;
+	private double recall10;
+	private double f_measure5;
+	private double f_measure10;
+	private double r_rank1;
+	private double r_rank2;
+	private double averagePrecision;
+	private double NDGC10;
+	private double NDGC100;
+	
+	public double getNDGC10() {
+		return NDGC10;
+	}
+	public void setNDGC10(double nDGC10) {
+		NDGC10 = nDGC10;
+	}
+	public double getNDGC100() {
+		return NDGC100;
+	}
+	public void setNDGC100(double nDGC100) {
+		NDGC100 = nDGC100;
+	}
 	public Metricas(){
 		
 	}
-    public double precision (int cortes, int min_rel,TreeMap<String, Double> smap, String queryId, Document relevancias){
+    public void precision5 (int min_rel,TreeMap<String, Double> smap, String queryId, Document relevancias){
         //Double precision = null;
         //Document relevancias = (Document) mongo.getCollectionRelevancia().find().first();
         
         int i =1;
         int rec=0;
             for(Entry<String, Double> entry : smap.entrySet()){
-                if(i>cortes) break;
+                if(i>5) break;
                 //System.out.println(entry.getKey()+" "+ entry.getValue());
                 Iterator it = relevancias.entrySet().iterator();
                 while (it.hasNext()) {
@@ -31,16 +110,41 @@ public class Metricas {
                 }
             i++;
             }
-            double result = (double)rec /(double)cortes;
-        return result;
+            double result = (double)rec /(double)5;
+            this.precision5= result;
+
+    }
+    public void precision10 (int min_rel,TreeMap<String, Double> smap, String queryId, Document relevancias){
+        //Double precision = null;
+        //Document relevancias = (Document) mongo.getCollectionRelevancia().find().first();
+        
+        int i =1;
+        int rec=0;
+            for(Entry<String, Double> entry : smap.entrySet()){
+                if(i>10) break;
+                //System.out.println(entry.getKey()+" "+ entry.getValue());
+                Iterator it = relevancias.entrySet().iterator();
+                while (it.hasNext()) {
+                    Document.Entry e = (Document.Entry)it.next();
+                    if(!e.getKey().equals("_id")&&(((String) e.getKey()).contains(queryId+"|"+entry.getKey()))&& (Integer.parseInt(e.getValue().toString())>=min_rel)){
+                        //System.out.println(e.getKey()+ " "+e.getValue() + "----------");
+                        //Contamos
+                        rec++;
+                        break;
+                    }
+                }
+            i++;
+            }
+            double result = (double)rec /(double)10;
+            this.precision10= result;
     }
     
-    public double recall (int cortes,TreeMap<String, Double> smap, String queryId, Document relevancias){
+    public void recall5 (TreeMap<String, Double> smap, String queryId, Document relevancias){
     	double relevantes = (double)documentosRelevantes(relevancias,queryId);
         int i =1;
         int rec=0;
             for(Entry<String, Double> entry : smap.entrySet()){
-                if(i>cortes) break;
+                if(i>5) break;
                 //System.out.println(entry.getKey()+" "+ entry.getValue());
                 Iterator it = relevancias.entrySet().iterator();
                 while (it.hasNext()) {
@@ -55,70 +159,132 @@ public class Metricas {
             i++;
             }
             double result = (double)rec/relevantes;
-        return result;
+            this.recall5= result;
     }
-    public double f_measure (double precision, double recall, double ratio){
+    public void recall10 (TreeMap<String, Double> smap, String queryId, Document relevancias){
+    	double relevantes = (double)documentosRelevantes(relevancias,queryId);
+        int i =1;
+        int rec=0;
+            for(Entry<String, Double> entry : smap.entrySet()){
+                if(i>10) break;
+                //System.out.println(entry.getKey()+" "+ entry.getValue());
+                Iterator it = relevancias.entrySet().iterator();
+                while (it.hasNext()) {
+                    Document.Entry e = (Document.Entry)it.next();
+                    if(!e.getKey().equals("_id")&&(((String) e.getKey()).contains(queryId+"|"+entry.getKey()))&& (Integer.parseInt(e.getValue().toString())>=1)){
+                        //System.out.println(e.getKey()+ " "+e.getValue() + "----------");
+                        //Contamos
+                        rec++;
+                        break;
+                    }
+                }
+            i++;
+            }
+            double result = (double)rec/relevantes;
+        this.recall10=result;
+    }
+    public void f_measure5 (double precision5, double recall5, double ratio){
     	double result = 0.0;
-    	double numerador = (1 + Math.pow(ratio, 2)) * precision * recall;
-    	double denominador = (Math.pow(ratio, 2) * precision) + recall;
-        return numerador/denominador;
-    }
-    public double reciprocalRank (TreeMap<String, Double> smap,Document relevancias, String queryId,int relevancia){
-    	double pos= (double)documentosRelevantesPosicion(smap, relevancias, queryId, relevancia);
-        return 1/pos;
-    }
-    
-    public double averageprecision (int cortes, TreeMap<String, Double> smap, String queryId, Document relevancias){
-    	//Sumatorio nmerador
     	double numerador=0.0;
-    	double i=0.0;
-    	Iterator it = relevancias.entrySet().iterator();
-        while (it.hasNext()) {
-            Document.Entry e = (Document.Entry)it.next();
-            if(!e.getKey().equals("_id")&&(((String) e.getKey()).contains(queryId+"|"))&& (Integer.parseInt(e.getValue().toString())>=1)){
-                //System.out.println(e.getKey()+ " "+e.getValue() + "----------");
-                i++;
-                String[] findrel = e.getKey().toString().split("[\\|]");
-	            String html = findrel[1];
-	            double j=0.0;
-	            for(Entry<String, Double> entry : smap.entrySet()){
-	            	j++;
-	                if(entry.getKey().equals(html)){
-	                	numerador=numerador+(i/j);
-	                	//System.out.println(i+" "+j+" "+ numerador);
-	                	break;
-	                }
-	            }
-            }       
-        }
-        int denominador = cortes;
-    	double result= numerador/denominador;
-    	return result;
+    	double denominador=0.0;
+    	if(precision5!=0.0||recall5!=0){
+        	numerador = (1 + Math.pow(ratio, 2)) * precision5 * recall5;
+        	denominador = (Math.pow(ratio, 2) * precision5) + recall5;
+        	this.f_measure5=numerador/denominador;
+        	
+    	}else{
+    	
+        this.f_measure5= result;
+    	}
+    }
+    public void f_measure10 (double precision10, double recall10, double ratio){
+    	double result = 0.0;
+    	double numerador=0.0;
+    	double denominador=0.0;
+    	if(precision10!=0.0||recall10!=0){
+        	numerador = (1 + Math.pow(ratio, 2)) * precision10 * recall10;
+        	denominador = (Math.pow(ratio, 2) * precision10) + recall10;
+        	this.f_measure10=numerador/denominador;
+    	}
+    	else{
+    		this.f_measure10= result;
+    	}
+        
+    }
+    public void reciprocalRank1 (TreeMap<String, Double> smap,Document relevancias, String queryId){
+    	double pos= (double)documentosRelevantesPosicion(smap, relevancias, queryId, 1);
+        this.r_rank1= 1/pos;
+    }
+    public void reciprocalRank2 (TreeMap<String, Double> smap,Document relevancias, String queryId){
+    	double pos= (double)documentosRelevantesPosicion(smap, relevancias, queryId, 2);
+        this.r_rank2= 1/pos;
     }
     
-    public Double[] nDGC (int cortes, TreeMap<String, Double> smap, String queryId, Document relevancias){
+    public void averageprecision (TreeMap<String, Double> smap, String queryId, Document relevancias){
+    	//Sumatorio nmerador
+        double numerador=0.0;
+        double i=0.0;
+        double j=0.0;
+        for(Entry<String, Double> entry : smap.entrySet()){
+             if(i>100) break;
+             j++;
+             //System.out.println(entry.getKey()+" "+ entry.getValue());
+             Iterator it = relevancias.entrySet().iterator();
+             while (it.hasNext()) {
+                 Document.Entry e = (Document.Entry)it.next();
+                 if((((String) e.getKey()).contains(queryId+"|"+entry.getKey()))&& (Integer.parseInt(e.getValue().toString())>=1)){
+                 //System.out.println(e.getKey()+ " "+e.getValue() + "----------");
+                 //Contamos
+                     i++;
+                     numerador=numerador+(i/j);
+                     break;
+                 }
+             }
+        i++;
+        }
+        int denominador = 100;
+        double result= numerador/denominador;
+        this.averagePrecision= result;
+    }
+    
+    public void nDGC10 (TreeMap<String, Double> smap, String queryId, Document relevancias){
     	
-		Double[] DGC = calcularDGC(cortes,smap,  queryId, relevancias);
+		Double[] DGC = calcularDGC10(smap,  queryId, relevancias);
     	Document auxorder = ordenarRelevancias(relevancias, queryId);
-    	Double[] DGCi = calcularDGCideal(cortes,smap,  queryId, auxorder);
+    	Double[] DGCi = calcularDGCideal(10,smap,  queryId, auxorder);
     	//System.out.println(auxorder);
     	//Meter todo en una funcion que haga todo y devuelva el valor DGC, pasar relevancias o auxorder
-    	Double[] nDGC = new Double[cortes];
+    	Double[] nDGC = new Double[10];
     	for (int i =0; i <DGC.length;i++){
     		if (DGC[i]==0)nDGC[i]=0.0;
     		else nDGC[i] = DGC[i]/DGCi[i];
     	}    	
-    	return nDGC;
+    	this.NDGC10=nDGC[9];
     }
     
-    private static Double[] calcularDGC (int cortes,TreeMap<String, Double> smap, String queryId, Document relevancias){
+    public void nDGC100 (TreeMap<String, Double> smap, String queryId, Document relevancias){
+    	
+		Double[] DGC = calcularDGC100(smap,  queryId, relevancias);
+    	Document auxorder = ordenarRelevancias(relevancias, queryId);
+    	Double[] DGCi = calcularDGCideal(100,smap,  queryId, auxorder);
+    	//System.out.println(auxorder);
+    	//Meter todo en una funcion que haga todo y devuelva el valor DGC, pasar relevancias o auxorder
+    	Double[] nDGC = new Double[100];
+    	for (int i =0; i <DGC.length;i++){
+    		if (DGC[i]==0)nDGC[i]=0.0;
+    		else nDGC[i] = DGC[i]/DGCi[i];
+    	}    	
+    	this.NDGC100=nDGC[99];
+    }
+    
+    private static Double[] calcularDGC10 (TreeMap<String, Double> smap, String queryId, Document relevancias){
     	int i =0;
-    	Double[] G = new Double[cortes];
-    	Double[] CG = new Double[cortes];
+    	Double[] G = new Double[10];
+    	Double[] CG = new Double[10];
     	
 		for(Entry<String, Double> entry : smap.entrySet()){
 			 boolean find = false;
-			 if(i<cortes){
+			 if(i<10){
 				 Iterator it = relevancias.entrySet().iterator();
 			     while (it.hasNext()) {
 			         Document.Entry e = (Document.Entry)it.next();
@@ -146,8 +312,55 @@ public class Metricas {
 			     } 
 			 }  
 		}
-    	Double[] DGC=new Double[cortes];
-    	for (int j=0;j<cortes;j++){
+    	Double[] DGC=new Double[10];
+    	for (int j=0;j<10;j++){
+    		if (j<1){
+    			DGC[j]=CG[j];
+    		}else{
+    			if(G[j]!=0) DGC[j]=(double)(DGC[j-1]+((double)G[j]/(double)(Math.log10(j+1)/ (double)Math.log10(2))));
+    			else DGC[j]=DGC[j-1];
+    		}
+    	}
+    	return DGC;
+    }
+    
+    private static Double[] calcularDGC100 (TreeMap<String, Double> smap, String queryId, Document relevancias){
+    	int i =0;
+    	Double[] G = new Double[100];
+    	Double[] CG = new Double[100];
+    	
+		for(Entry<String, Double> entry : smap.entrySet()){
+			 boolean find = false;
+			 if(i<100){
+				 Iterator it = relevancias.entrySet().iterator();
+			     while (it.hasNext()) {
+			         Document.Entry e = (Document.Entry)it.next();
+			         if(!e.getKey().equals("_id")&&(((String) e.getKey()).contains(queryId+"|"+entry.getKey()))){
+			        	 if (i!=0){
+			        		 CG[i]=CG[i-1]+ Double.parseDouble(e.getValue().toString());
+			        	 }else{
+			        		 CG[i]=Double.parseDouble(e.getValue().toString());
+			        	 }
+			        	 G[i]=Double.parseDouble(e.getValue().toString());
+			        	 i++;
+			        	 find =true;
+			        	 break;
+			         }
+			     }
+			     if (find==false){
+			    	 if(i==0){
+				    	 CG[i]=0.0;
+				     }
+			         else{
+			        	 CG[i]=CG[i-1];
+			         }
+			         G[i]=0.0;
+			         i++;
+			     } 
+			 }  
+		}
+    	Double[] DGC=new Double[100];
+    	for (int j=0;j<100;j++){
     		if (j<1){
     			DGC[j]=CG[j];
     		}else{
@@ -267,10 +480,5 @@ public class Metricas {
             }
         
         return rec;
-    }
-    public String roundFourDecimals(double d) {
-        DecimalFormat fourDForm = new DecimalFormat("0.0000");
-        //System.out.println(fourDForm.format(d));
-        return fourDForm.format(d);
     }
 }

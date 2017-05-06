@@ -16,24 +16,15 @@ public class QueryExp {
 					
 					String[] wordForms = null;
 					ArrayList<String> query1 = new ArrayList<String>();
-					Synset[] synsets= null;
 					palabra = limpiarLetras(palabra);
 					
 					for(int k= 0;k<palabra.length; k++){
+						Synset[] synsets= null;
 					//Synset[] synsets = database.getSynsets(palabra[k]);
 						synsets = database.getSynsets(palabra[k], SynsetType.NOUN);
-						if(pos[k].equals("ADVERB")){
-							synsets = database.getSynsets(palabra[k], SynsetType.ADVERB);
-						}else
-						if(pos[k].equals("VERB")){
-							synsets = database.getSynsets(palabra[k], SynsetType.VERB);
-						}else
-						if(pos[k].equals("ADJECTIVE")){
-							synsets = database.getSynsets(palabra[k], SynsetType.ADJECTIVE);
-						}else
-						{
+						if(pos[k].equals("NOUN")){
 							synsets = database.getSynsets(palabra[k], SynsetType.NOUN);
-						}
+						
 						
 						if (synsets.length > 0){
 							for (int i = 0; i < synsets.length; i++){
@@ -43,10 +34,17 @@ public class QueryExp {
 								}
 							}
 						}
+						}
 					}
 					
-					 String p=query+" "+consEXP;
+					String p="";
+					for (int a=0;a<palabra.length;a++){
+						p+=palabra[a]+" ";
+					}
+					 p+=" "+consEXP;
 	                    String fin="";
+	                    
+	                    
 	                    ArrayList<String> lista=removeRepeats(p);
 	                    for (int i=0;i<lista.size();i++){
 	                        fin = fin +" "+ lista.get(i);
